@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
@@ -35,13 +36,13 @@ ITEMS = [
     dict(id="dji", group="股指", name="道琼斯", unit="点",
          src=[("eastmoney", "100.DJIA"), ("sina_us", ".dji"), ("fred", "DJIA"), ("yahoo", "^DJI"), ("stooq", "^dji")]),
     dict(id="hsi", group="股指", name="恒生指数", unit="点",
-         src=[("eastmoney", "100.HSI"), ("yahoo", "^HSI"), ("stooq", "^hsi")]),
+         src=[("sina_global", "HSI"), ("eastmoney", "100.HSI"), ("yahoo", "^HSI"), ("stooq", "^hsi")]),
     dict(id="sh", group="股指", name="上证指数", unit="点",
          src=[("eastmoney", "1.000001"), ("sina_cn", "sh000001"), ("yahoo", "000001.SS"), ("stooq", "^shc")]),
     dict(id="sz", group="股指", name="深证成指", unit="点",
          src=[("eastmoney", "0.399001"), ("sina_cn", "sz399001"), ("yahoo", "399001.SZ")]),
     dict(id="n225", group="股指", name="日经225", unit="点",
-         src=[("eastmoney", "100.N225"), ("fred", "NIKKEI225"), ("yahoo", "^N225"), ("stooq", "^nkx")]),
+         src=[("sina_global", "NKY"), ("eastmoney", "100.N225"), ("fred", "NIKKEI225"), ("yahoo", "^N225"), ("stooq", "^nkx")]),
     dict(id="dax", group="股指", name="德国DAX", unit="点",
          src=[("eastmoney", "100.GDAXI"), ("sina_global", "DAX"), ("investing_stooq", "^dax"),
               ("yahoo", "^GDAXI"), ("stooq", "^dax")]),
@@ -82,7 +83,14 @@ def src_eastmoney(secid):
     url = ("https://push2his.eastmoney.com/api/qt/stock/kline/get"
            f"?secid={secid}&ut=fa5fd1943c7b386f172d6893dbfba10b"
            "&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f53&klt=101&fqt=1&end=20500101&lmt=260")
-    data = get_json(url, {"Referer": "https://quote.eastmoney.com/"})["data"]
+    for attempt in range(3):   # 东方财富经常直接断开连接，重试几次
+        try:
+            data = get_json(url, {"Referer": "https://quote.eastmoney.com/"})["data"]
+            break
+        except Exception:  # noqa: BLE001
+            if attempt == 2:
+                raise
+            time.sleep(3)
     return [(k.split(",")[0], float(k.split(",")[1])) for k in data["klines"]]
 
 
@@ -189,7 +197,9 @@ def clean(points, scale):
 
 
 def fetch_item(item):
-    for name, arg in item["src"]:
+    # 新浪在 GitHub 的机器上最稳定，优先用；其余按表里的顺序
+    ordered = sorted(item["src"], key=lambda t: not t[0].startswith("sina"))
+    for name, arg in ordered:
         try:
             points = clean(SOURCES[name](arg), item.get("scale", 1))
             if len(points) >= MIN_POINTS:
