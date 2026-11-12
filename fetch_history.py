@@ -16,6 +16,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
@@ -30,17 +31,17 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json")
 # 每个品种: 基本信息 + 按优先级排列的数据源 [(来源名, 参数), ...]
 ITEMS = [
     dict(id="spx", group="股指", name="标普500", unit="点",
-         src=[("eastmoney", "100.SPX"), ("sina_us", ".inx"), ("fred", "SP500"), ("yahoo", "^GSPC"), ("stooq", "^spx")]),
+         src=[("eastmoney", "100.SPX"), ("sina_us", ".inx"), ("tencent", "us.INX"), ("fred", "SP500"), ("yahoo", "^GSPC"), ("stooq", "^spx")]),
     dict(id="ixic", group="股指", name="纳斯达克", unit="点",
-         src=[("eastmoney", "100.NDX"), ("sina_us", ".ixic"), ("fred", "NASDAQCOM"), ("yahoo", "^IXIC"), ("stooq", "^ndq")]),
+         src=[("eastmoney", "100.NDX"), ("sina_us", ".ixic"), ("tencent", "us.IXIC"), ("fred", "NASDAQCOM"), ("yahoo", "^IXIC"), ("stooq", "^ndq")]),
     dict(id="dji", group="股指", name="道琼斯", unit="点",
-         src=[("eastmoney", "100.DJIA"), ("sina_us", ".dji"), ("fred", "DJIA"), ("yahoo", "^DJI"), ("stooq", "^dji")]),
+         src=[("eastmoney", "100.DJIA"), ("sina_us", ".dji"), ("tencent", "us.DJI"), ("fred", "DJIA"), ("yahoo", "^DJI"), ("stooq", "^dji")]),
     dict(id="hsi", group="股指", name="恒生指数", unit="点",
-         src=[("sina_global", "HSI"), ("eastmoney", "100.HSI"), ("yahoo", "^HSI"), ("stooq", "^hsi")]),
+         src=[("tencent", "hkHSI"), ("eastmoney", "100.HSI"), ("yahoo", "^HSI"), ("stooq", "^hsi")]),
     dict(id="sh", group="股指", name="上证指数", unit="点",
-         src=[("eastmoney", "1.000001"), ("sina_cn", "sh000001"), ("yahoo", "000001.SS"), ("stooq", "^shc")]),
+         src=[("eastmoney", "1.000001"), ("sina_cn", "sh000001"), ("tencent", "sh000001"), ("yahoo", "000001.SS"), ("stooq", "^shc")]),
     dict(id="sz", group="股指", name="深证成指", unit="点",
-         src=[("eastmoney", "0.399001"), ("sina_cn", "sz399001"), ("yahoo", "399001.SZ")]),
+         src=[("eastmoney", "0.399001"), ("sina_cn", "sz399001"), ("tencent", "sz399001"), ("yahoo", "399001.SZ")]),
     dict(id="n225", group="股指", name="日经225", unit="点",
          src=[("sina_global", "NKY"), ("eastmoney", "100.N225"), ("fred", "NIKKEI225"), ("yahoo", "^N225"), ("stooq", "^nkx")]),
     dict(id="dax", group="股指", name="德国DAX", unit="点",
@@ -69,8 +70,16 @@ ITEMS = [
 
 def get(url, headers=None, timeout=20):
     req = urllib.request.Request(url, headers={**UA, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+    for attempt in range(2):   # 偶发的超时/断连重试一次；429 之类的 HTTP 错误不重试
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read()
+        except urllib.error.HTTPError:
+            raise
+        except Exception:  # noqa: BLE001
+            if attempt == 1:
+                raise
+            time.sleep(2)
 
 
 def get_json(url, headers=None):
@@ -140,6 +149,13 @@ def src_investing_stooq(sym):
     return [(r["Date"], float(r["Close"])) for r in rows if r.get("Close")]
 
 
+def src_tencent(code):
+    j = get_json(f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={code},day,,,260,qfq")
+    d = j["data"][code]
+    rows = d.get("day") or d.get("qfqday")
+    return [(r[0], float(r[2])) for r in rows]   # [日期, 开, 收, 高, 低, 量]
+
+
 def src_yahoo(sym):
     url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}"
            "?range=1y&interval=1d")
@@ -198,7 +214,7 @@ def clean(points, scale):
 
 def fetch_item(item):
     # 新浪在 GitHub 的机器上最稳定，优先用；其余按表里的顺序
-    ordered = sorted(item["src"], key=lambda t: not t[0].startswith("sina"))
+    ordered = sorted(item["src"], key=lambda t: not t[0].startswith(("sina", "tencent")))
     for name, arg in ordered:
         try:
             points = clean(SOURCES[name](arg), item.get("scale", 1))
