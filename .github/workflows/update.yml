@@ -1,0 +1,35 @@
+name: 更新走势数据
+
+on:
+  schedule:
+    # UTC 00:30 = 北京时间 08:30，赶在 09:00 的飞书推送之前
+    - cron: "30 0 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["fetch_history.py", ".github/workflows/update.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python fetch_history.py
+      - name: 提交 data.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --cached --quiet && echo "数据没有变化" && exit 0
+          git commit -m "Update market history data"
+          git push

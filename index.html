@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全球市场 · 近一年走势</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2329; --muted: #8f959e; --line: #e5e6eb;
+    --up: #d93025; --down: #0f9d58; --flat: #8f959e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #17181a; --card: #222427; --text: #e8e9eb; --muted: #8b9097; --line: #34373c;
+            --up: #f25c54; --down: #34c27a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  header { max-width: 1200px; margin: 0 auto 8px; }
+  h1 { font-size: 20px; margin: 0; }
+  .meta { color: var(--muted); font-size: 12px; }
+  main { max-width: 1200px; margin: 0 auto; }
+  h2 { font-size: 15px; margin: 20px 0 8px; color: var(--muted); font-weight: 600; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .card { background: var(--card); border-radius: 10px; padding: 12px 12px 6px; scroll-margin-top: 12px; }
+  .card:target { outline: 2px solid var(--muted); }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .name { font-weight: 600; }
+  .chg { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .price { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .unit { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .range, .tip { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tip { min-height: 18px; color: var(--text); }
+  svg { display: block; width: 100%; height: 120px; margin-top: 4px; touch-action: pan-y; cursor: crosshair; }
+  .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--flat); }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  footer { max-width: 1200px; margin: 24px auto 0; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>全球市场 · 近一年走势</h1>
+  <div class="meta" id="meta">加载中…</div>
+</header>
+<main id="main"></main>
+<footer>
+  红涨绿跌。涨跌幅为近一年首尾收盘价之比。鼠标移动或手指按住图表可查看某一天的价格。<br>
+  数据来自东方财富、新浪财经、CoinGecko、欧洲央行（Frankfurter）、FRED 等公开接口，仅供参考。
+</footer>
+<script>
+const W = 300, H = 120, PAD = 4;
+const fmt = (v) => v.toLocaleString("zh-CN", {
+  minimumFractionDigits: v < 20 ? 4 : 2, maximumFractionDigits: v < 20 ? 4 : 2 });
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function card(item) {
+  const el = document.createElement("div");
+  el.className = "card";
+  el.id = item.id;
+  const pts = item.points;
+  if (!pts || pts.length < 2) {
+    el.innerHTML = `<div class="name">${esc(item.name)}</div><div class="empty">暂无数据</div>`;
+    return el;
+  }
+  const vals = pts.map((p) => p[1]);
+  const first = vals[0], last = vals[vals.length - 1];
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const chg = (last - first) / first * 100;
+  const cls = chg > 0 ? "up" : chg < 0 ? "down" : "flat";
+  const x = (i) => PAD + i * (W - 2 * PAD) / (pts.length - 1);
+  const y = (v) => max === min ? H / 2 : PAD + (max - v) * (H - 2 * PAD) / (max - min);
+  const d = vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const range = `${pts[0][0]} ~ ${pts[pts.length - 1][0]}　最低 ${fmt(min)}　最高 ${fmt(max)}`;
+  el.innerHTML = `
+    <div class="top"><span class="name">${esc(item.name)}</span>
+      <span class="chg ${cls}">${chg > 0 ? "▲ +" : chg < 0 ? "▼ " : ""}${chg.toFixed(2)}%</span></div>
+    <div class="price">${fmt(last)}<span class="unit">${esc(item.unit)}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="${cls}">
+      <path d="${d}L${x(pts.length - 1).toFixed(1)},${H}L${x(0).toFixed(1)},${H}Z" fill="currentColor" opacity=".1"/>
+      <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+      <line y1="0" y2="${H}" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".5" visibility="hidden"/>
+    </svg>
+    <div class="tip">${item.stale ? "数据源暂时失败，显示的是上次的数据" : ""}</div>
+    <div class="range">${range}</div>`;
+  const svg = el.querySelector("svg"), cursor = el.querySelector("line"), tip = el.querySelector(".tip");
+  const idle = tip.textContent;
+  const move = (e) => {
+    const r = svg.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    const i = Math.round(ratio * (pts.length - 1));
+    cursor.setAttribute("x1", x(i)); cursor.setAttribute("x2", x(i));
+    cursor.setAttribute("visibility", "visible");
+    tip.textContent = `${pts[i][0]}　${fmt(pts[i][1])} ${item.unit}`;
+  };
+  svg.addEventListener("pointermove", move);
+  svg.addEventListener("pointerdown", move);
+  svg.addEventListener("pointerleave", () => { cursor.setAttribute("visibility", "hidden"); tip.textContent = idle; });
+  return el;
+}
+
+fetch("data.json?t=" + Date.now()).then((r) => r.json()).then((data) => {
+  document.getElementById("meta").textContent = `数据更新于 ${data.updated}（北京时间），每天更新一次`;
+  const main = document.getElementById("main");
+  const groups = new Map();
+  for (const item of data.items) {
+    if (!groups.has(item.group)) groups.set(item.group, []);
+    groups.get(item.group).push(item);
+  }
+  for (const [group, items] of groups) {
+    const h = document.createElement("h2"); h.textContent = group; main.appendChild(h);
+    const grid = document.createElement("div"); grid.className = "grid";
+    items.forEach((it) => grid.appendChild(card(it)));
+    main.appendChild(grid);
+  }
+  if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+}).catch((e) => { document.getElementById("meta").textContent = "数据加载失败：" + e; });
+</script>
+</body>
+</html>
