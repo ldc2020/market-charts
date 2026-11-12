@@ -43,7 +43,8 @@ ITEMS = [
     dict(id="n225", group="股指", name="日经225", unit="点",
          src=[("eastmoney", "100.N225"), ("fred", "NIKKEI225"), ("yahoo", "^N225"), ("stooq", "^nkx")]),
     dict(id="dax", group="股指", name="德国DAX", unit="点",
-         src=[("eastmoney", "100.GDAXI"), ("yahoo", "^GDAXI"), ("stooq", "^dax")]),
+         src=[("eastmoney", "100.GDAXI"), ("sina_global", "DAX"), ("investing_stooq", "^dax"),
+              ("yahoo", "^GDAXI"), ("stooq", "^dax")]),
     dict(id="gold-ny", group="商品", name="黄金(纽约)", unit="美元/盎司",
          src=[("eastmoney", "101.GC00Y"), ("sina_fut", "GC"), ("yahoo", "GC=F"), ("stooq", "gc.f")]),
     dict(id="gold-sh", group="商品", name="黄金(上海)", unit="人民币/克",
@@ -117,6 +118,20 @@ def src_sina_cn_fut(sym):
                       f"InnerFuturesNewService.getDailyKLine?symbol={sym}")
 
 
+def src_sina_global(sym):
+    return _sina_rows("https://stock.finance.sina.com.cn/usstock/api/jsonp.php/x/"
+                      f"Global_IndexService.getDayLine?symbol={sym}&num=260")
+
+
+def src_investing_stooq(sym):
+    # stooq 的另一个入口（不带日期范围）
+    text = get(f"https://stooq.com/q/d/l/?s={urllib.parse.quote(sym)}&i=d").decode("utf-8", "replace")
+    rows = list(csv.DictReader(io.StringIO(text)))
+    if not rows or "Close" not in rows[0]:
+        raise ValueError("stooq 返回: " + text[:80].replace("\n", " "))
+    return [(r["Date"], float(r["Close"])) for r in rows if r.get("Close")]
+
+
 def src_yahoo(sym):
     url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}"
            "?range=1y&interval=1d")
@@ -159,6 +174,14 @@ def src_frankfurter(base):
 SOURCES = {name[4:]: fn for name, fn in globals().items() if name.startswith("src_")}
 
 
+LOG = []
+
+
+def log(msg):
+    print(msg)
+    LOG.append(msg)
+
+
 def clean(points, scale):
     """去重、排序、截到近一年、统一小数位。"""
     by_date = {d: p for d, p in points if p and START.isoformat() <= d <= TODAY.isoformat()}
@@ -170,12 +193,12 @@ def fetch_item(item):
         try:
             points = clean(SOURCES[name](arg), item.get("scale", 1))
             if len(points) >= MIN_POINTS:
-                print(f"[ok]   {item['name']}: {name}，{len(points)} 个点，"
+                log(f"[ok]   {item['name']}: {name}，{len(points)} 个点，"
                       f"{points[0][0]} ~ {points[-1][0]}")
                 return name, points
-            print(f"[skip] {item['name']}: {name} 只有 {len(points)} 个点")
+            log(f"[skip] {item['name']}: {name} 只有 {len(points)} 个点")
         except Exception as e:  # noqa: BLE001
-            print(f"[fail] {item['name']}: {name}: {type(e).__name__}: {str(e)[:120]}")
+            log(f"[fail] {item['name']}: {name}: {type(e).__name__}: {str(e)[:120]}")
     return None, None
 
 
@@ -191,7 +214,7 @@ def main():
         if points:
             items.append({**base, "source": source, "points": points})
         elif item["id"] in old:
-            print(f"[keep] {item['name']}: 全部失败，沿用上次数据")
+            log(f"[keep] {item['name']}: 全部失败，沿用上次数据")
             items.append({**base, "source": old[item["id"]].get("source"),
                           "points": old[item["id"]]["points"], "stale": True})
         else:
@@ -201,6 +224,8 @@ def main():
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump({"updated": f"{now:%Y-%m-%d %H:%M}", "items": items}, f,
                   ensure_ascii=False, separators=(",", ":"))
+    with open(os.path.join(os.path.dirname(OUT), "log.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(LOG) + "\n")
     print(f"\n写入 {OUT}；无数据的品种: {missing or '无'}")
     if len(missing) == len(ITEMS):
         sys.exit("所有品种都失败")
