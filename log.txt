@@ -1,31 +1,23 @@
-[fail] 标普500: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   标普500: sina_us，254 个点，2025-11-07 ~ 2026-11-11
-[fail] 纳斯达克: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   纳斯达克: sina_us，254 个点，2025-11-07 ~ 2026-11-11
-[fail] 道琼斯: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   道琼斯: sina_us，254 个点，2025-11-07 ~ 2026-11-11
+[fail] 恒生指数: sina_global: ValueError: substring not found
 [fail] 恒生指数: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [fail] 恒生指数: yahoo: HTTPError: HTTP Error 429: Too Many Requests
 [skip] 恒生指数: stooq 只有 0 个点
 [keep] 恒生指数: 全部失败，沿用上次数据
-[fail] 上证指数: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   上证指数: sina_cn，245 个点，2025-11-07 ~ 2026-11-11
-[fail] 深证成指: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   深证成指: sina_cn，245 个点，2025-11-07 ~ 2026-11-11
-[fail] 日经225: eastmoney: RemoteDisconnected: Remote end closed connection without response
-[fail] 日经225: fred: TimeoutError: The read operation timed out
-[fail] 日经225: yahoo: HTTPError: HTTP Error 429: Too Many Requests
-[skip] 日经225: stooq 只有 0 个点
-[keep] 日经225: 全部失败，沿用上次数据
+[ok]   日经225: sina_global，246 个点，2025-11-07 ~ 2026-11-12
+[fail] 德国DAX: sina_global: URLError: <urlopen error _ssl.c:994: The handshake operation timed out>
 [fail] 德国DAX: eastmoney: RemoteDisconnected: Remote end closed connection without response
-[ok]   德国DAX: sina_global，256 个点，2025-11-07 ~ 2026-11-11
-[fail] 黄金(纽约): eastmoney: RemoteDisconnected: Remote end closed connection without response
+[fail] 德国DAX: investing_stooq: ValueError: stooq 返回: <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="no
+[fail] 德国DAX: yahoo: HTTPError: HTTP Error 429: Too Many Requests
+[skip] 德国DAX: stooq 只有 0 个点
+[keep] 德国DAX: 全部失败，沿用上次数据
 [ok]   黄金(纽约): sina_fut，262 个点，2025-11-07 ~ 2026-11-12
-[fail] 黄金(上海): eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   黄金(上海): sina_cn_fut，245 个点，2025-11-07 ~ 2026-11-11
-[fail] WTI原油: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   WTI原油: sina_fut，262 个点，2025-11-07 ~ 2026-11-12
-[fail] 布伦特原油: eastmoney: RemoteDisconnected: Remote end closed connection without response
 [ok]   布伦特原油: sina_fut，262 个点，2025-11-07 ~ 2026-11-12
 [ok]   BTC: coingecko，365 个点，2025-11-13 ~ 2026-11-12
 [ok]   ETH: coingecko，365 个点，2025-11-13 ~ 2026-11-12
