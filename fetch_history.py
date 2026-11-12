@@ -59,6 +59,12 @@ ITEMS = [
          src=[("coingecko", "bitcoin"), ("yahoo", "BTC-USD")]),
     dict(id="eth", group="加密货币", name="ETH", unit="美元",
          src=[("coingecko", "ethereum"), ("yahoo", "ETH-USD")]),
+    dict(id="sol", group="加密货币", name="SOL", unit="美元",
+         src=[("coingecko", "solana"), ("yahoo", "SOL-USD")]),
+    dict(id="bnb", group="加密货币", name="BNB", unit="美元",
+         src=[("coingecko", "binancecoin"), ("yahoo", "BNB-USD")]),
+    dict(id="okb", group="加密货币", name="OKB", unit="美元",
+         src=[("coingecko", "okb"), ("yahoo", "OKB-USD")]),
     dict(id="usd", group="汇率", name="1美元", unit="人民币",
          src=[("frankfurter", "USD"), ("yahoo", "CNY=X")]),
     dict(id="hkd", group="汇率", name="1港币", unit="人民币",
@@ -184,8 +190,17 @@ def src_fred(series):
 
 
 def src_coingecko(coin):
-    j = get_json(f"https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
-                 "?vs_currency=usd&days=365&interval=daily")
+    url = (f"https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
+           "?vs_currency=usd&days=365&interval=daily")
+    for attempt in range(3):   # 免费接口每分钟只允许几次请求，被限流就等一会儿再试
+        try:
+            j = get_json(url)
+            break
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 2:
+                raise
+            time.sleep(30)
+    time.sleep(3)
     return [(datetime.fromtimestamp(ms / 1000, timezone.utc).strftime("%Y-%m-%d"), p)
             for ms, p in j["prices"]]
 

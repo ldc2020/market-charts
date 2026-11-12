@@ -20,9 +20,16 @@
   h1 { font-size: 20px; margin: 0; }
   .meta { color: var(--muted); font-size: 12px; }
   main { max-width: 1200px; margin: 0 auto; }
+  nav { max-width: 1200px; margin: 12px auto 0; display: flex; gap: 8px; overflow-x: auto;
+        position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 1; }
+  nav button { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--text);
+               font: inherit; padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+  nav button[aria-selected="true"] { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  main.single h2 { display: none; }
+  main.single section { margin-top: 8px; }
   h2 { font-size: 15px; margin: 20px 0 8px; color: var(--muted); font-weight: 600; }
   .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-  .card { background: var(--card); border-radius: 10px; padding: 12px 12px 6px; scroll-margin-top: 12px; }
+  .card { background: var(--card); border-radius: 10px; padding: 12px 12px 6px; scroll-margin-top: 60px; }
   .card:target { outline: 2px solid var(--muted); }
   .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .name { font-weight: 600; }
@@ -42,6 +49,7 @@
   <h1>全球市场 · 近一年走势</h1>
   <div class="meta" id="meta">加载中…</div>
 </header>
+<nav id="tabs" role="tablist" aria-label="品类"></nav>
 <main id="main"></main>
 <footer>
   红涨绿跌。涨跌幅为近一年首尾收盘价之比。鼠标移动或手指按住图表可查看某一天的价格。<br>
@@ -106,13 +114,37 @@ fetch("data.json?t=" + Date.now()).then((r) => r.json()).then((data) => {
     if (!groups.has(item.group)) groups.set(item.group, []);
     groups.get(item.group).push(item);
   }
+  const ALL = "全部";
+  const tabs = document.getElementById("tabs");
+  const sections = new Map();
   for (const [group, items] of groups) {
-    const h = document.createElement("h2"); h.textContent = group; main.appendChild(h);
+    const sec = document.createElement("section");
+    const h = document.createElement("h2"); h.textContent = group; sec.appendChild(h);
     const grid = document.createElement("div"); grid.className = "grid";
     items.forEach((it) => grid.appendChild(card(it)));
-    main.appendChild(grid);
+    sec.appendChild(grid);
+    main.appendChild(sec);
+    sections.set(group, sec);
   }
-  if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+  const show = (name) => {
+    for (const [group, sec] of sections) sec.hidden = name !== ALL && name !== group;
+    main.classList.toggle("single", name !== ALL);
+    for (const b of tabs.children) b.setAttribute("aria-selected", b.dataset.tab === name);
+    try { localStorage.setItem("tab", name); } catch (e) {}
+  };
+  for (const name of [...groups.keys(), ALL]) {
+    const b = document.createElement("button");
+    b.type = "button"; b.role = "tab"; b.dataset.tab = name; b.textContent = name;
+    b.addEventListener("click", () => { history.replaceState(null, "", location.pathname); show(name); });
+    tabs.appendChild(b);
+  }
+  // 链接里带 #品种id 时切到它所在的分类；否则恢复上次看的分类，默认第一个
+  const target = data.items.find((it) => it.id === location.hash.slice(1));
+  let saved = null;
+  try { saved = localStorage.getItem("tab"); } catch (e) {}
+  const names = [...groups.keys(), ALL];
+  show(target ? target.group : names.includes(saved) ? saved : names[0]);
+  if (target) document.getElementById(target.id).scrollIntoView();
 }).catch((e) => { document.getElementById("meta").textContent = "数据加载失败：" + e; });
 </script>
 </body>
