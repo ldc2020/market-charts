@@ -2,8 +2,8 @@ name: 更新走势数据
 
 on:
   schedule:
-    # UTC 00:30 = 北京时间 08:30，赶在 09:00 的飞书推送之前
-    - cron: "30 0 * * *"
+    # UTC 00:13 = 北京时间 08:13，赶在飞书推送之前；避开整点和半点的高峰
+    - cron: "13 0 * * *"
   workflow_dispatch: {}
   push:
     branches: [main]
