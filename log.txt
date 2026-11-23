@@ -1,6 +1,5 @@
 [ok]   标普500: sina_us，254 个点，2025-11-18 ~ 2026-11-20
-[fail] 纳斯达克: sina_us: URLError: <urlopen error _ssl.c:994: The handshake operation timed out>
-[ok]   纳斯达克: tencent，254 个点，2025-11-18 ~ 2026-11-20
+[ok]   纳斯达克: sina_us，254 个点，2025-11-18 ~ 2026-11-20
 [ok]   道琼斯: sina_us，254 个点，2025-11-18 ~ 2026-11-20
 [ok]   恒生指数: tencent，250 个点，2025-11-18 ~ 2026-11-23
 [ok]   上证指数: sina_cn，245 个点，2025-11-18 ~ 2026-11-20
