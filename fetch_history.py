@@ -51,6 +51,9 @@ ITEMS = [
          src=[("sina_us", "nvda"), ("tencent", "usNVDA.OQ"), ("eastmoney", "105.NVDA"), ("yahoo", "NVDA")]),
     dict(id="amd", group="AI", name="AMD", unit="美元",
          src=[("sina_us", "amd"), ("tencent", "usAMD.OQ"), ("eastmoney", "105.AMD"), ("yahoo", "AMD")]),
+    dict(id="ant", group="AI", name="Anthropic ANT", unit="美元", min_points=1,
+         note="2026-11-19 上市，涨跌幅为上市以来",
+         src=[("sina_us", "ant"), ("tencent", "usANT.OQ"), ("eastmoney", "105.ANT"), ("yahoo", "ANT")]),
     dict(id="gold-ny", group="商品", name="黄金(纽约)", unit="美元/盎司",
          src=[("eastmoney", "101.GC00Y"), ("sina_fut", "GC"), ("yahoo", "GC=F"), ("stooq", "gc.f")]),
     dict(id="gold-sh", group="商品", name="黄金(上海)", unit="人民币/克",
@@ -243,7 +246,7 @@ def fetch_item(item):
     for name, arg in ordered:
         try:
             points = clean(SOURCES[name](arg), item.get("scale", 1))
-            if len(points) >= MIN_POINTS:
+            if len(points) >= item.get("min_points", MIN_POINTS):
                 log(f"[ok]   {item['name']}: {name}，{len(points)} 个点，"
                       f"{points[0][0]} ~ {points[-1][0]}")
                 return name, points
@@ -261,7 +264,7 @@ def main():
     items, missing = [], []
     for item in ITEMS:
         source, points = fetch_item(item)
-        base = {k: item[k] for k in ("id", "group", "name", "unit")}
+        base = {k: item[k] for k in ("id", "group", "name", "unit", "note") if k in item}
         if points:
             items.append({**base, "source": source, "points": points})
         elif item["id"] in old:

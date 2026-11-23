@@ -88,7 +88,7 @@ function card(item) {
       <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
       <line y1="0" y2="${H}" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".5" visibility="hidden"/>
     </svg>
-    <div class="tip">${item.stale ? "数据源暂时失败，显示的是上次的数据" : ""}</div>
+    <div class="tip">${item.stale ? "数据源暂时失败，显示的是上次的数据" : esc(item.note || "")}</div>
     <div class="range">${range}</div>`;
   const svg = el.querySelector("svg"), cursor = el.querySelector("line"), tip = el.querySelector(".tip");
   const idle = tip.textContent;
